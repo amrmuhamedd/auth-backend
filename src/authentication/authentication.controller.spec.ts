@@ -55,19 +55,24 @@ describe('AuthenticationController', () => {
         {
           provide: AuthenticationService,
           useValue: {
-            register: jest
-              .fn()
-              .mockResolvedValue({ access_token: 'mocked-jwt-token', refresh_token: 'mocked-refresh-token' }),
-            login: jest
-              .fn()
-              .mockResolvedValue({ access_token: 'mocked-jwt-token', refresh_token: 'mocked-refresh-token' }),
-            refreshToken: jest
-              .fn()
-              .mockResolvedValue({ access_token: 'new-mocked-jwt-token', refresh_token: 'new-mocked-refresh-token' }),
+            register: jest.fn().mockResolvedValue({
+              access_token: 'mocked-jwt-token',
+              refresh_token: 'mocked-refresh-token',
+            }),
+            login: jest.fn().mockResolvedValue({
+              access_token: 'mocked-jwt-token',
+              refresh_token: 'mocked-refresh-token',
+            }),
+            refreshToken: jest.fn().mockResolvedValue({
+              access_token: 'new-mocked-jwt-token',
+              refresh_token: 'new-mocked-refresh-token',
+            }),
             logout: jest
               .fn()
               .mockResolvedValue({ message: 'Logged out successfully' }),
-            getUserInfo: jest.fn().mockResolvedValue({ id: 'user-id', email: 'user@example.com' }),
+            getUserInfo: jest
+              .fn()
+              .mockResolvedValue({ id: 'user-id', email: 'user@example.com' }),
           },
         },
       ],
@@ -90,14 +95,17 @@ describe('AuthenticationController', () => {
         email: 'test@example.com',
         password: 'password123',
       };
-      
+
       // Mock response object with cookie method
       const mockResponse = {
         cookie: jest.fn(),
       };
-      
-      const result = await controller.register(registerDto, mockResponse as any);
-      
+
+      const result = await controller.register(
+        registerDto,
+        mockResponse as any,
+      );
+
       expect(authenticationService.register).toHaveBeenCalledWith(registerDto);
       expect(mockResponse.cookie).toHaveBeenCalledWith(
         'refresh_token',
@@ -105,10 +113,9 @@ describe('AuthenticationController', () => {
         expect.objectContaining({
           httpOnly: true,
           path: '/',
-        })
+        }),
       );
       expect(result).toEqual({ access_token: 'mocked-jwt-token' });
     });
   });
-
 });

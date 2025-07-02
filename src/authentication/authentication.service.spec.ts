@@ -15,7 +15,6 @@ import { ConfigModule } from '@nestjs/config';
 describe('AuthenticationService', () => {
   let service: AuthenticationService;
   let userRepository: jest.Mocked<UserRepository>;
-  let sessionRepository: jest.Mocked<SessionsRepository>;
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [
@@ -54,7 +53,6 @@ describe('AuthenticationService', () => {
 
     service = module.get<AuthenticationService>(AuthenticationService);
     userRepository = module.get(UserRepository);
-    sessionRepository = module.get(SessionsRepository);
   });
 
   it('should be defined', () => {
@@ -120,5 +118,4 @@ describe('AuthenticationService', () => {
       );
     });
   });
-
 });
