@@ -6,6 +6,7 @@ import { AuthenticationModule } from './authentication/authentication.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { validationSchema } from './config/validation.schema';
+import { PostsModule } from './posts/posts.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -23,6 +24,7 @@ import { validationSchema } from './config/validation.schema';
     }),
 
     AuthenticationModule,
+    PostsModule,
   ],
 
   controllers: [AppController],
