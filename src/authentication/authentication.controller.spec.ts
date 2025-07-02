@@ -4,13 +4,13 @@ import { AuthenticationService } from './authentication.service';
 import { RegisterDto } from './dto/register.dto';
 import { UserRepository } from './repository/user.repository';
 import { JwtModule, JwtService } from '@nestjs/jwt';
+import { LoginDto } from './dto/login.dto';
 import { ConfigService } from '@nestjs/config';
 import { SessionsRepository } from './repository/sessions.repository';
 
 describe('AuthenticationController', () => {
   let controller: AuthenticationController;
   let authenticationService: AuthenticationService;
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [
@@ -107,6 +107,33 @@ describe('AuthenticationController', () => {
       );
 
       expect(authenticationService.register).toHaveBeenCalledWith(registerDto);
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        'refresh_token',
+        'mocked-refresh-token',
+        expect.objectContaining({
+          httpOnly: true,
+          path: '/',
+        }),
+      );
+      expect(result).toEqual({ access_token: 'mocked-jwt-token' });
+    });
+  });
+
+  describe('login', () => {
+    it('should call AuthenticationService.login, set refresh token cookie and return access token', async () => {
+      const loginDto: LoginDto = {
+        email: 'test@example.com',
+        password: 'password123',
+      };
+
+      // Mock response object with cookie method
+      const mockResponse = {
+        cookie: jest.fn(),
+      };
+
+      const result = await controller.login(loginDto, mockResponse as any);
+
+      expect(authenticationService.login).toHaveBeenCalledWith(loginDto);
       expect(mockResponse.cookie).toHaveBeenCalledWith(
         'refresh_token',
         'mocked-refresh-token',

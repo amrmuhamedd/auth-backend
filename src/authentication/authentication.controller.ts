@@ -2,6 +2,7 @@ import { Controller, Post, Body, Res } from '@nestjs/common';
 import { AuthenticationService } from './authentication.service';
 import { RegisterDto } from './dto/register.dto';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { LoginDto } from './dto/login.dto';
 import { Response } from 'express';
 
 @Controller('auth')
@@ -42,6 +43,30 @@ export class AuthenticationController {
     this.setRefreshTokenCookie(response, result.refresh_token);
 
     // Return only the access token
+    return { access_token: result.access_token };
+  }
+
+  @Post('/login')
+  @ApiOperation({ summary: 'Login and get an access token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Successful login. Refresh token is set in HTTP-only cookie.',
+    schema: {
+      type: 'object',
+      properties: {
+        access_token: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Invalid credentials.' })
+  async login(
+    @Body() loginDto: LoginDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.authenticationService.login(loginDto);
+
+    this.setRefreshTokenCookie(response, result.refresh_token);
+
     return { access_token: result.access_token };
   }
 }

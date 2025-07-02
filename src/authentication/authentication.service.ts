@@ -3,11 +3,13 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { RegisterDto } from './dto/register.dto';
 import { UserRepository } from './repository/user.repository';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { LoginDto } from './dto/login.dto';
 import { SessionsRepository } from './repository/sessions.repository';
 import { ConfigService } from '@nestjs/config';
 
@@ -15,7 +17,7 @@ import { ConfigService } from '@nestjs/config';
 export class AuthenticationService {
   private readonly logger = new Logger(AuthenticationService.name);
   private readonly saltRounds = 12;
-  private readonly EXPIRATION_TIME = 60 * 60 * 1000; // 1 hour
+  private readonly EXPIRATION_TIME = 60 * 60 * 1000; // 10 minutes
 
   constructor(
     private readonly configService: ConfigService,
@@ -24,11 +26,44 @@ export class AuthenticationService {
     private readonly sessionRepository: SessionsRepository,
   ) {}
 
-  async getUserInfo(userId: string) {
-    const user = await this.userRepository.findById(userId);
+  async login(loginData: LoginDto) {
+    const { email, password } = loginData;
+
+    // Validate user credentials
+    const user = await this.validateUser(email, password);
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new UnauthorizedException('Invalid credentials');
     }
+
+    await this.sessionRepository.deleteExpiredSessions(
+      user.id,
+      this.EXPIRATION_TIME,
+    );
+
+    const refresh_token = this.generateRefreshToken(user.id);
+    const access_token = this.generateToken(user.id);
+
+    await this.sessionRepository.deleteByUserId(user.id);
+
+    await this.sessionRepository.create({
+      user: user,
+      token: refresh_token,
+    });
+
+    return { access_token, refresh_token };
+  }
+
+  private async validateUser(email: string, password: string) {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) {
+      return null;
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return null;
+    }
+
     return user;
   }
 
