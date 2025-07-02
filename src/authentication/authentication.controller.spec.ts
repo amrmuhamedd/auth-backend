@@ -7,10 +7,12 @@ import { JwtModule, JwtService } from '@nestjs/jwt';
 import { LoginDto } from './dto/login.dto';
 import { ConfigService } from '@nestjs/config';
 import { SessionsRepository } from './repository/sessions.repository';
+import { UnauthorizedException } from '@nestjs/common';
 
 describe('AuthenticationController', () => {
   let controller: AuthenticationController;
   let authenticationService: AuthenticationService;
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [
@@ -143,6 +145,92 @@ describe('AuthenticationController', () => {
         }),
       );
       expect(result).toEqual({ access_token: 'mocked-jwt-token' });
+    });
+  });
+
+  describe('refresh', () => {
+    it('should refresh tokens, set new refresh token cookie and return new access token', async () => {
+      const mockRequest = {
+        cookies: {
+          refresh_token: 'existing-refresh-token',
+        },
+      };
+
+      const mockResponse = {
+        cookie: jest.fn(),
+      };
+
+      const result = await controller.refresh(
+        mockRequest as any,
+        mockResponse as any,
+      );
+
+      expect(authenticationService.refreshToken).toHaveBeenCalledWith(
+        'existing-refresh-token',
+      );
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        'refresh_token',
+        'new-mocked-refresh-token',
+        expect.objectContaining({
+          httpOnly: true,
+          path: '/',
+        }),
+      );
+      expect(result).toEqual({ access_token: 'new-mocked-jwt-token' });
+    });
+
+    it('should throw UnauthorizedException when refresh token cookie is missing', async () => {
+      const mockRequest = {
+        cookies: {},
+      };
+
+      const mockResponse = {
+        cookie: jest.fn(),
+      };
+
+      await expect(
+        controller.refresh(mockRequest as any, mockResponse as any),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('logout', () => {
+    it('should logout user, clear refresh token cookie', async () => {
+      const mockRequest = {
+        cookies: {
+          refresh_token: 'existing-refresh-token',
+        },
+      };
+
+      const mockResponse = {
+        cookie: jest.fn(),
+        clearCookie: jest.fn(),
+      };
+
+      const result = await controller.logout(
+        mockRequest as any,
+        mockResponse as any,
+      );
+
+      expect(authenticationService.logout).toHaveBeenCalledWith(
+        'existing-refresh-token',
+      );
+      expect(mockResponse.clearCookie).toHaveBeenCalledWith('refresh_token');
+      expect(result).toEqual({ message: 'Logged out successfully' });
+    });
+
+    it('should throw UnauthorizedException when refresh token cookie is missing', async () => {
+      const mockRequest = {
+        cookies: {},
+      };
+
+      const mockResponse = {
+        clearCookie: jest.fn(),
+      };
+
+      await expect(
+        controller.logout(mockRequest as any, mockResponse as any),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 });

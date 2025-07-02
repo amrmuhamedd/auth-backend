@@ -26,6 +26,14 @@ export class AuthenticationService {
     private readonly sessionRepository: SessionsRepository,
   ) {}
 
+  async getUserInfo(userId: string) {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+    return user;
+  }
+
   async login(loginData: LoginDto) {
     const { email, password } = loginData;
 
@@ -67,6 +75,17 @@ export class AuthenticationService {
     return user;
   }
 
+  async logout(refreshToken: string) {
+    const session = await this.sessionRepository.findByToken(refreshToken);
+    if (!session) {
+      throw new UnauthorizedException('Invalid session or already logged out');
+    }
+
+    await this.sessionRepository.deleteByToken(refreshToken);
+    this.logger.log('User logged out successfully');
+    return { message: 'Logged out successfully' };
+  }
+
   async register(data: RegisterDto) {
     this.logger.log(`Registering new user with email: ${data.email}`);
 
@@ -98,6 +117,55 @@ export class AuthenticationService {
       throw new InternalServerErrorException(
         'Error creating user. Please try again later.',
       );
+    }
+  }
+
+  async refreshToken(refreshToken: string) {
+    try {
+      if (!refreshToken) {
+        throw new BadRequestException('Refresh token is required');
+      }
+
+      const session = await this.sessionRepository.findByToken(refreshToken);
+      if (!session) {
+        throw new UnauthorizedException('Invalid or expired refresh token');
+      }
+
+      let decoded;
+      try {
+        decoded = this.jwtService.verify(refreshToken, {
+          secret: this.configService.get<string>('RT_SECRET'),
+        });
+      } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+          throw new UnauthorizedException('Refresh token has expired');
+        }
+        if (error.name === 'JsonWebTokenError') {
+          throw new UnauthorizedException('Invalid refresh token');
+        }
+        throw new InternalServerErrorException('Token verification failed');
+      }
+
+      console.log('Decoded Token:', decoded);
+
+      const user = await this.userRepository.findById(decoded.id);
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      const newAccessToken = this.generateToken(user.id);
+      const newRefreshToken = this.generateRefreshToken(user.id);
+
+      await this.sessionRepository.deleteByUserId(user.id);
+      await this.sessionRepository.create({ user, token: newRefreshToken });
+
+      return { access_token: newAccessToken, refresh_token: newRefreshToken };
+    } catch (error) {
+      this.logger.error('Refresh Token Error:', error);
+      throw error instanceof UnauthorizedException ||
+        error instanceof BadRequestException
+        ? error
+        : new InternalServerErrorException('An unexpected error occurred');
     }
   }
 
