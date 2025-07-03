@@ -49,6 +49,7 @@ DATABASE_URL=mongodb://localhost:27017/auth # MongoDB connection URL
 JWT_SECRET=your_jwt_secret_key # Secret for access token
 RT_SECRET=your_refresh_token_secret_key # Secret for refresh token
 PORT=3000 # Optional: Application port (default: 3000)
+CORS_ORIGIN=http://localhost:5173 # Frontend URL for CORS configuration
 ```
 
 2. Install dependencies:
