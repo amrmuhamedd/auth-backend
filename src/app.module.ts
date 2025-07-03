@@ -1,7 +1,8 @@
 import { Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-import { APP_PIPE } from '@nestjs/core';
+import { APP_GUARD, APP_PIPE } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthenticationModule } from './authentication/authentication.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -13,6 +14,15 @@ import { PostsModule } from './posts/posts.module';
       isGlobal: true,
       envFilePath: `.env`,
       validationSchema,
+    }),
+
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60,
+          limit: 20,
+        },
+      ],
     }),
 
     MongooseModule.forRootAsync({
@@ -38,6 +48,11 @@ import { PostsModule } from './posts/posts.module';
           transform: true,
           forbidNonWhitelisted: true,
         }),
+    },
+    // Register ThrottlerGuard as a global guard
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })
